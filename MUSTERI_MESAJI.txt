@@ -1,0 +1,34 @@
+Merhaba Umutcan Bey,
+
+Projeniz için geliştirme ortamı kuruldu ve ilk aşama çalışmaları başladı.
+
+📋 GÜNCEL DURUM:
+✅ Proje yapısı hazırlandı
+✅ 18 panel desteği için gerekli altyapı oluşturuldu
+✅ Kod geliştirmesi devam ediyor
+
+🔧 SİZDEN İSTENENLER:
+
+1. RustDesk programını indirin ve kurun:
+   → https://rustdesk.com/
+   → Kurulum sonrası ID ve şifrenizi not edin
+
+2. ESP32-S3 N16R8 kartınızı temin edin (henüz yoksa):
+   → https://www.direnc.net/esp32-s3-n16r8-wifi-bluetooth-board
+
+3. Test ortamınız hazır olduğunda (ESP32 + LED paneller) müsait olduğunuz bir zaman için randevu ayarlayalım.
+
+💡 ÖNEMLİ:
+Genel kurulum işlemlerini (Python, PlatformIO vb.) ben uzaktan yapacağım. Siz sadece RustDesk'i kurmanız ve bana RustDesk bilgilerinizi (ID ve şifre) göndermeniz yeterli.
+
+📚 EK:
+Ekte Müşteri Hazırlık Kılavuzu'nu bulabilirsiniz. Adım adım talimatlar içeriyor.
+
+📞 İLETİŞİM:
+WhatsApp: +90 507 840 93 23
+E-posta: veyselklcrn321@gmail.com
+
+Sorularınız olursa her zaman yazabilirsiniz.
+
+Saygılarımla,
+Veysel Karani Kılıçerkan

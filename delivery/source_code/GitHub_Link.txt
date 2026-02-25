@@ -1,0 +1,62 @@
+GITHUB KAYNAK KOD LİNKİ
+========================
+
+Vakitmatik P4 LED Panel Projesi
+
+Kaynak Kod (Açık):
+https://github.com/veyselka/Vakitmatik-P4-LED
+
+Bu linkten:
+- Tüm kaynak kodları indirebilirsin (.zip olarak)
+- Değişiklikleri takip edebilirsin (commit history)
+- Sorun bildirebilirsin (Issues sekmesi)
+- İyileştirme önerebilirsin (Pull Request)
+- Yıldız verebilirsin (Star) ⭐
+
+---
+
+PROJE YAPISI:
+
+ESP32_P4_Matrix_Lib/
+├── src/                    ← Ana kütüphane kodları
+│   ├── main.cpp
+│   ├── ESP32_P4_Matrix.h
+│   └── ESP32_P4_Matrix.cpp
+│
+├── examples/               ← Örnek projeler
+│   ├── 00_FirstTest/
+│   ├── 01_BasicTest/
+│   └── 05_Vakitmatik/
+│
+├── docs/                   ← Dokümantasyon
+│   ├── PRD.md
+│   └── TASKS.md
+│
+├── platformio.ini          ← PlatformIO konfigürasyonu
+└── README.md               ← Proje tanıtımı
+
+---
+
+KENDİN DERLEMEK İSTERSEN:
+
+1. Visual Studio Code + PlatformIO kur
+2. GitHub'dan kodu indir (Clone or Download → ZIP)
+3. Zip'i aç
+4. VS Code'da klasörü aç (File → Open Folder)
+5. PlatformIO: Build butonuna bas
+6. .pio/build/esp32-s3-devkitc-1/firmware.bin oluşacak
+
+---
+
+LİSANS:
+
+Yazılım açık kaynak (MIT License).
+Ticari kullanım için Veysel Karani Kılıçerkan'dan izin gerekir.
+
+---
+
+İLETİŞİM:
+
+GitHub: @veyselka
+Proje: github.com/veyselka/Vakitmatik-P4-LED
+

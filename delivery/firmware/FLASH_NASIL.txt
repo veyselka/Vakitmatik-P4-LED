@@ -1,0 +1,194 @@
+# FIRMWARE YÜKLEME TALİMATLARI
+
+## Gerekli Yazılım
+
+**PlatformIO CLI** (Önerilen - En Kolay Yöntem)
+
+Otomatik kurulum: `pip install platformio`
+
+Alternatifler:
+- ESP32 Flash Download Tool (Espressif)
+- esptool (komut satırı)
+
+---
+
+## YÖNTEM 1: PlatformIO Upload (En Kolay - Önerilen)
+
+### Adım 1: Aracı İndir ve Aç
+1. Yukarıdaki linkten `flash_download_tool_vX.X.X.zip` indir
+2. Zip'i aç
+3. `flash_download_tool_vX.X.X.exe` dosyasını çalıştır
+
+### Adım 2: Chip Tipi Seç
+- **ChipType:** ESP32-S3
+- **WorkMode:** Develop
+- **LoadMode:** UART
+- "OK" butonuna bas
+
+### Adım 3: Firmware Seç
+1. Soldaki checkbox'u işaretle
+2. "..." butonuna basıp `vakitmatik_v1.0.bin` dosyasını seç
+3. Adres kısmına: **0x10000** yaz (önemli!)
+
+### Adım 4: Port Ayarları
+- **COM:** ESP32'nin takılı olduğu port (Aygıt Yöneticisi'nden bak)
+  - Örnek: COM3, COM4, vs.
+- **BAUD:** 921600 (hızlı yükleme için)
+
+### Adım 5: Flash Et
+1. ESP32-S3'ü USB'ye tak
+2. **START** butonuna bas
+3. "FINISH" yazısını bekle (30-60 saniye)
+4. **Tamamlandı!** ESP32'yi çıkar ve tak (reset)
+
+---
+
+## YÖNTEM 2: Sadece .bin Dosyası Yükle (Firmware Hazırsa)
+
+### Ne Zaman Kullanılır?
+- Kod değişikliği yapmayacaksan
+- Sadece hazır .bin dosyan varsa
+- PlatformIO projesine ihtiyacın yoksa
+
+### Adım 1: .bin Dosyasını Bul
+Eğer `pio run` yaptıysan:
+```
+.pio\build\esp32-s3-devkitc-1\firmware.bin
+```
+
+### Adım 2: esptool ile Yükle
+```bash
+pip install esptool
+esptool.py --chip esp32s3 --port COM3 write_flash 0x10000 firmware.bin
+```
+
+**Not:** COM3 yerine kendi portunu yaz (Aygıt Yöneticisi'nden bakabilirsin).
+
+---
+
+## YÖNTEM 3: ESP Flash Download Tool (GUI - Windows)
+
+### Adım 1: Aracı İndir
+https://www.espressif.com/en/support/download/other-tools
+
+### Adım 2: Ayarları Yap
+- ChipType: ESP32-S3
+- Firmware: `firmware.bin` @ adres `0x10000`
+- COM port seç
+- BAUD: 921600
+
+### Adım 3: START Bas
+Yükleme 30-60 saniye sürer.
+
+---
+
+## YÖNTEM 4 (ESKİ): esptool (İleri Seviye - Komut Satırı)
+
+### Kurulum
+```bash
+pip install esptool
+```
+
+### Flash Komutu
+```bash
+esptool.py --chip esp32s3 --port COM3 --baud 921600 write_flash 0x10000 vakitmatik_v1.0.bin
+```
+
+**Not:** `COM3` yerine kendi port numaranı yaz.
+
+---
+
+## SORUN GİDERME
+
+### "Timed out waiting for packet header" Hatası
+**Çözüm:** ESP32'yi BOOT moduna al
+1. ESP32'deki "BOOT" butonuna bas ve tut
+2. "RST" butonuna bir kez bas
+3. "BOOT" butonunu bırak
+4. Tekrar flash et
+
+### COM Port Görünmüyor
+**Çözüm:** USB Driver kurulumu gerekebilir
+1. CP210x driver indir: https://www.silabs.com/developers/usb-to-uart-bridge-vcp-drivers
+2. Kur ve bilgisayarı yeniden başlat
+3. ESP32'yi takınca COM port görünecek
+
+### Flash Başarılı Ama Ekran Boş
+**Kontrol Et:**
+1. Güç kaynağı bağlı mı? (5V 60A)
+2. Paneller doğru kablolu mu?
+3. Serial Monitor'de hata mesajı var mı?
+   - 115200 baud rate ayarla
+   - ESP32'yi reset et
+   - Hata mesajlarını Veysel'e gönder
+
+---
+
+## İLK ÇALIŞTIRMA
+
+Flash başarılı olduktan sonra:
+
+1. **Güç Kaynağını Aç** (5V 60A)
+2. **ESP32'yi Reset Et** (RST butonu veya USB çıkar-tak)
+3. **İlk Test Pattern'i Gör:**
+   - Kırmızı ekran (2 sn)
+   - Yeşil ekran (2 sn)
+   - Mavi ekran (2 sn)
+4. **Vakitler Görünsün:**
+   ```
+   12:45    25 Şubat
+   ─────────────────
+   İMSAK    05:30
+   GÜNEŞ    07:15
+   ÖĞLE     12:45
+   İKİNDİ   15:30
+   AKŞAM    18:00
+   YATSI    19:45
+   ```
+
+---
+
+## GÜNCELLEME
+
+Yeni firmware versiyonu geldiğinde:
+
+1. Eski .bin dosyasını yedekle
+2. Yeni .bin dosyasını aynı yöntemle flash et
+3. Ayarlar sıfırlanabilir (yeniden ayarlama gerekebilir)
+
+---
+
+## SERİAL MONITOR İLE DEBUG
+
+Sorun yaşıyorsan serial monitor'de mesajları görebilirsin:
+
+**PlatformIO:**
+```bash
+pio device monitor --baud 115200
+```
+
+**Arduino IDE:**
+- Tools → Serial Monitor
+- Baud rate: 115200
+
+**esptool:**
+```bash
+esptool.py monitor --port COM3 --baud 115200
+```
+
+---
+
+## İLETİŞİM
+
+Flash sırasında sorun yaşarsan:
+
+📧 Email: [email]  
+📱 WhatsApp: [telefon]  
+💻 GitHub: https://github.com/veyselka/Vakitmatik-P4-LED
+
+Ekran görüntüleri ve hata mesajlarını gönder, çözelim!
+
+---
+
+**Hazırlayan:** Veysel Karani Kılıçerkan  
+**Güncelleme:** 29 Şubat 2026
