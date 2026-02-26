@@ -10,11 +10,24 @@
 
 ESP32_P4_Matrix::ESP32_P4_Matrix() {
     dma_display = nullptr;
+    timeClient = nullptr;
+    timeInitialized = false;
+    
+    // Varsayılan namaz vakitleri (örnek)
+    prayerTimes.fajr = "05:30";
+    prayerTimes.sunrise = "07:00";
+    prayerTimes.dhuhr = "12:30";
+    prayerTimes.asr = "15:45";
+    prayerTimes.maghrib = "18:15";
+    prayerTimes.isha = "19:45";
 }
 
 ESP32_P4_Matrix::~ESP32_P4_Matrix() {
     if (dma_display != nullptr) {
         delete dma_display;
+    }
+    if (timeClient != nullptr) {
+        delete timeClient;
     }
 }
 
@@ -75,11 +88,11 @@ void ESP32_P4_Matrix::setupPins(HUB75_I2S_CFG::i2s_pins& pins) {
         pins.r2 = R2_PIN;
         pins.g2 = G2_PIN;
         pins.b2 = B2_PIN;
-        pins.a = DA_PIN;
-        pins.b = DB_PIN;
-        pins.c = DC_PIN;
-        pins.d = DD_PIN;
-        pins.e = DE_PIN;
+        pins.a = A_PIN;
+        pins.b = B_PIN;
+        pins.c = C_PIN;
+        pins.d = D_PIN;
+        pins.e = E_PIN;
         pins.lat = LAT_PIN;
         pins.oe = OE_PIN;
         pins.clk = CLK_PIN;
@@ -234,4 +247,191 @@ void ESP32_P4_Matrix::mapCoordinates(int16_t& x, int16_t& y) {
     // - Local koordinatları hesapla
     // - 1/10 scan için Y koordinatını dönüştür
     // - Folded matrix algoritması uygula
+}
+// ============================================================================
+// WiFi ve NTP Fonksiyonları
+// ============================================================================
+
+bool ESP32_P4_Matrix::connectWiFi(const char* ssid, const char* password, uint32_t timeout) {
+    Serial.printf("WiFi'a bağlanılıyor: %s\n", ssid);
+    
+    WiFi.mode(WIFI_STA);
+    WiFi.begin(ssid, password);
+    
+    unsigned long startTime = millis();
+    while (WiFi.status() != WL_CONNECTED) {
+        if (millis() - startTime > timeout) {
+            Serial.println("✗ WiFi bağlantısı zaman aşımı!");
+            return false;
+        }
+        delay(500);
+        Serial.print(".");
+    }
+    
+    Serial.println("\n✓ WiFi bağlandı!");
+    Serial.printf("  IP Adresi: %s\n", WiFi.localIP().toString().c_str());
+    return true;
+}
+
+bool ESP32_P4_Matrix::syncTime(const char* ntpServer, long gmtOffset) {
+    Serial.printf("NTP senkronizasyonu: %s\n", ntpServer);
+    
+    if (!isWiFiConnected()) {
+        Serial.println("✗ WiFi bağlı değil!");
+        return false;
+    }
+    
+    // NTPClient başlat
+    if (timeClient == nullptr) {
+        timeClient = new NTPClient(ntpUDP, ntpServer, gmtOffset, 60000);
+    }
+    
+    timeClient->begin();
+    
+    // İlk güncelleme
+    if (!timeClient->update()) {
+        Serial.println("✗ NTP güncellemesi başarısız!");
+        return false;
+    }
+    
+    timeInitialized = true;
+    Serial.println("✓ NTP senkronizasyonu başarılı!");
+    Serial.printf("  Saat: %s\n", getCurrentTime().c_str());
+    
+    return true;
+}
+
+String ESP32_P4_Matrix::getCurrentTime() {
+    if (!timeInitialized || timeClient == nullptr) {
+        return "--:--:--";
+    }
+    
+    timeClient->update();
+    return timeClient->getFormattedTime();
+}
+
+String ESP32_P4_Matrix::getCurrentDate() {
+    if (!timeInitialized) {
+        return "--.--.----";
+    }
+    
+    time_t rawtime = timeClient->getEpochTime();
+    struct tm* timeinfo = localtime(&rawtime);
+    
+    char buffer[16];
+    snprintf(buffer, sizeof(buffer), "%02d.%02d.%04d", 
+             timeinfo->tm_mday, 
+             timeinfo->tm_mon + 1, 
+             timeinfo->tm_year + 1900);
+    
+    return String(buffer);
+}
+
+// ============================================================================
+// Namaz Vakitleri Fonksiyonları
+// ============================================================================
+
+void ESP32_P4_Matrix::setPrayerTimes(const PrayerTimes& times) {
+    prayerTimes = times;
+    Serial.println("Namaz vakitleri güncellendi:");
+    Serial.printf("  İmsak  : %s\n", prayerTimes.fajr.c_str());
+    Serial.printf("  Güneş  : %s\n", prayerTimes.sunrise.c_str());
+    Serial.printf("  Öğle   : %s\n", prayerTimes.dhuhr.c_str());
+    Serial.printf("  İkindi : %s\n", prayerTimes.asr.c_str());
+    Serial.printf("  Akşam  : %s\n", prayerTimes.maghrib.c_str());
+    Serial.printf("  Yatsı  : %s\n", prayerTimes.isha.c_str());
+}
+
+void ESP32_P4_Matrix::displayPrayerTimes(int16_t x, int16_t y) {
+    if (dma_display == nullptr) return;
+    
+    clear(COLOR_BLACK);
+    
+    // Başlık
+    drawTextTurkish("NAMAZ VAKITLERI", x + 10, y + 5, COLOR_GREEN, 2);
+    
+    // Vakitleri listele
+    int16_t lineY = y + 30;
+    int16_t lineSpacing = 30;
+    
+    drawTextTurkish("Imsak  : " + prayerTimes.fajr, x + 10, lineY, COLOR_CYAN, 1);
+    lineY += lineSpacing;
+    
+    drawTextTurkish("Gunes  : " + prayerTimes.sunrise, x + 10, lineY, COLOR_YELLOW, 1);
+    lineY += lineSpacing;
+    
+    drawTextTurkish("Ogle   : " + prayerTimes.dhuhr, x + 10, lineY, COLOR_WHITE, 1);
+    lineY += lineSpacing;
+    
+    drawTextTurkish("Ikindi : " + prayerTimes.asr, x + 10, lineY, COLOR_ORANGE, 1);
+    lineY += lineSpacing;
+    
+    drawTextTurkish("Aksam  : " + prayerTimes.maghrib, x + 10, lineY, COLOR_MAGENTA, 1);
+    lineY += lineSpacing;
+    
+    drawTextTurkish("Yatsi  : " + prayerTimes.isha, x + 10, lineY, COLOR_BLUE, 1);
+}
+
+void ESP32_P4_Matrix::displayClock(int16_t x, int16_t y, uint16_t color) {
+    if (dma_display == nullptr) return;
+    
+    String time = getCurrentTime();
+    
+    // Büyük rakamlarla saat göster
+    // HH:MM formatı (saniye gösterme)
+    String hourMin = time.substring(0, 5);
+    
+    drawTextTurkish(hourMin, x, y, color, 3);
+    
+    // Tarihi küçük göster
+    String date = getCurrentDate();
+    drawTextTurkish(date, x + 10, y + 50, COLOR_CYAN, 1);
+}
+
+// ============================================================================
+// Türkçe Destek Fonksiyonları
+// ============================================================================
+
+String ESP32_P4_Matrix::convertTurkishChars(const String& text) {
+    String result = text;
+    
+    // UTF-8 Türkçe karakterleri ASCII yaklaşımlarına çevir
+    result.replace("ş", "s");
+    result.replace("Ş", "S");
+    result.replace("ğ", "g");
+    result.replace("Ğ", "G");
+    result.replace("ı", "i");
+    result.replace("İ", "I");
+    result.replace("ö", "o");
+    result.replace("Ö", "O");
+    result.replace("ü", "u");
+    result.replace("Ü", "U");
+    result.replace("ç", "c");
+    result.replace("Ç", "C");
+    
+    return result;
+}
+
+void ESP32_P4_Matrix::drawTextTurkish(const String& text, int16_t x, int16_t y, uint16_t color, uint8_t size) {
+    if (dma_display == nullptr) return;
+    
+    // Türkçe karakterleri dönüştür
+    String converted = convertTurkishChars(text);
+    
+    dma_display->setTextColor(color);
+    dma_display->setTextSize(size);
+    dma_display->setCursor(x, y);
+    dma_display->print(converted);
+}
+
+void ESP32_P4_Matrix::drawBigDigit(char digit, int16_t x, int16_t y, uint16_t color, uint8_t scale) {
+    if (dma_display == nullptr) return;
+    
+    // 7-segment tarzı büyük rakam çizimi
+    // Bu basit bir implementasyon, ileride geliştirilebilir
+    
+    dma_display->setTextColor(color);
+    dma_display->setTextSize(scale * 4);
+    dma_display->setCursor(x, y);
+    dma_display->print(digit);
 }
