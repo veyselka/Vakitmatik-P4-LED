@@ -64,16 +64,16 @@ struct TestConfig {
 };
 
 TestConfig configs[] = {
-    // Öncelikli deneme: ICN2037 (panelin gerçek çipi)
-    {false, 4, HUB75_I2S_CFG::HZ_10M, "ICN2037  / clk=false / latch=4", HUB75_I2S_CFG::ICN2037},
-    // Deneme 2: ICN2038S (yakın chip)
+    // Deneme 1: ICN2038S, varsayılan ayarlar
     {false, 4, HUB75_I2S_CFG::HZ_10M, "ICN2038S / clk=false / latch=4", HUB75_I2S_CFG::ICN2038S},
-    // Deneme 3: Varsayılan sürücü, farklı latch
+    // Deneme 2: ICN2038S, clkphase true
+    {true,  4, HUB75_I2S_CFG::HZ_10M, "ICN2038S / clk=true  / latch=4", HUB75_I2S_CFG::ICN2038S},
+    // Deneme 3: SHIFTREG (en temel sürücü), latch=1
     {false, 1, HUB75_I2S_CFG::HZ_10M, "SHIFTREG / clk=false / latch=1", HUB75_I2S_CFG::SHIFTREG},
-    // Deneme 4: clkphase true
-    {true,  4, HUB75_I2S_CFG::HZ_10M, "ICN2037  / clk=true  / latch=4", HUB75_I2S_CFG::ICN2037},
-    // Deneme 5: Düşük hız
-    {false, 4, HUB75_I2S_CFG::HZ_5M,  "ICN2037  / clk=false / HZ_5M  ", HUB75_I2S_CFG::ICN2037},
+    // Deneme 4: SHIFTREG, clkphase true
+    {true,  1, HUB75_I2S_CFG::HZ_10M, "SHIFTREG / clk=true  / latch=1", HUB75_I2S_CFG::SHIFTREG},
+    // Deneme 5: FM6126A (bazı P4 panellerde kullanılıyor)
+    {false, 4, HUB75_I2S_CFG::HZ_10M, "FM6126A  / clk=false / latch=4", HUB75_I2S_CFG::FM6126A},
 };
 const int CONFIG_COUNT = sizeof(configs) / sizeof(configs[0]);
 
