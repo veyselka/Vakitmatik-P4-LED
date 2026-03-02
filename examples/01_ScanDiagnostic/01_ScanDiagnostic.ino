@@ -240,7 +240,11 @@ void testBigL() {
 
 void setup() {
     Serial.begin(115200);
-    delay(1000);
+    
+    // ESP32-S3 USB CDC hazır olana kadar bekle (max 3 saniye)
+    unsigned long t = millis();
+    while (!Serial && millis() - t < 3000) { delay(10); }
+    delay(500);
 
     Serial.println("\n\n==============================================");
     Serial.println("  01_ScanDiagnostic - Tek Panel Tanılama");
