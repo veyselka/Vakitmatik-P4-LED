@@ -13,10 +13,12 @@
 
 // ====================================================================
 // PANEL BOYUTLARI
+// DENEY: 80x40 panel = iki adet 40x40 half-panel zinciri
+// NUM_PANELS=2, WIDTH=40 → kütüphane iki panel olarak işler
 // ====================================================================
-#define PANEL_WIDTH  80
+#define PANEL_WIDTH  40   // TEK half-panel genisligi
 #define PANEL_HEIGHT 40
-#define NUM_PANELS   1
+#define NUM_PANELS   2    // Iki half-panel zincirleme
 
 // ====================================================================
 // PIN TANIMLARI - Umutcan ESP32S3 Dev Module
@@ -40,22 +42,12 @@
 MatrixPanel_I2S_DMA *dma_display = nullptr;
 
 // ====================================================================
-// 1/10 SCAN FOLDED MATRIX KOORDÄ°NAT DÃ–NÃœÅÃœMÃœ
-// 40 satÄ±r / 10 scan = her scan adresi 4 satÄ±rÄ± sÃ¼rer
-// Scan addr 0 â†’ fiziksel satÄ±r 0, 10, 20, 30
-// Scan addr 1 â†’ fiziksel satÄ±r 1, 11, 21, 31  vb.
-// DolayÄ±sÄ±yla buffer'da logical y=0 â†’ fiziksel 0, logical y=1 â†’ fiziksel 10
-// FormÃ¼l: physical = (y / 10) + (y % 10) * 4
+// MAP-Y: Simdilik kimlik donusumu (y → y)
+// rawRow(0) → 2 fiziksel satir yaniyorsa kütüphane scan'i yanlis anlıyor
+// NUM_PANELS=2 + WIDTH=40 ile bu sorunu düzeltmeyi bekliyoruz
 // ====================================================================
-#define SCAN_LINES   10   // 1/10 scan
-#define ROW_GROUPS   4    // 40 / 10 = 4 grup
-
 inline int mapY(int y) {
-    // logical y â†’ physical y
-    // Ã¶rn: y=0  â†’ (0/10) + (0%10)*4  = 0 + 0  = 0
-    // Ã¶rn: y=1  â†’ (1/10) + (1%10)*4  = 0 + 4  = 4
-    // Ã¶rn: y=10 â†’ (10/10) + (10%10)*4 = 1 + 0  = 1
-    return (y / SCAN_LINES) + (y % SCAN_LINES) * ROW_GROUPS;
+    return y;  // Simdilik donusum yok - kütüphane zaten dogru yapsin
 }
 
 void mp(int x, int y, uint8_t r, uint8_t g, uint8_t b) {
@@ -242,6 +234,7 @@ void setup() {
         LAT_PIN, OE_PIN, CLK_PIN
     };
 
+    // NUM_PANELS=2, WIDTH=40 → toplam gorunen genislik = 40*2 = 80px
     HUB75_I2S_CFG mxconfig(PANEL_WIDTH, PANEL_HEIGHT, NUM_PANELS, _pins);
     mxconfig.clkphase       = true;
     mxconfig.driver         = HUB75_I2S_CFG::SHIFTREG;
@@ -251,13 +244,14 @@ void setup() {
 
     dma_display = new MatrixPanel_I2S_DMA(mxconfig);
     if (!dma_display || !dma_display->begin()) {
-        Serial.println("HATA: Panel baslatÄ±lamadi!");
+        Serial.println("HATA: Panel baslatamadi!");
         while(1) delay(1000);
     }
 
     dma_display->setBrightness8(180);
     dma_display->clearScreen();
-    Serial.println("  Panel OK - SHIFTREG / clk=true / latch=1");
+    Serial.printf("  Panel OK - %dx%d x%d panels\n", PANEL_WIDTH, PANEL_HEIGHT, NUM_PANELS);
+    Serial.printf("  Gorunen toplam: %dx%d\n", PANEL_WIDTH * NUM_PANELS, PANEL_HEIGHT);
     Serial.println("\nTestler basliyor... (her test arasinda panel yanmali)\n");
     delay(1000);
 }
