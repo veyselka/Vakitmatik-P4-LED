@@ -13,15 +13,15 @@
 
 // ====================================================================
 // PANEL BOYUTLARI
+// Panel etiket: L920f10s80*40  → fiziksel 80x40
 // f10 = 1/10 scan → 10 scan adresi
-// HEIGHT=40 → kutuphane 20 scan addr bekler, panel 10 tane var → YANLIS
-// HEIGHT=20 → kutuphane 10 scan addr kullanir → DOGRU!
-// Sonuc: fiziksel satir 0-19 gorulur, 20-39 onlarin aynasi olur (1/10 scan)
-// WIDTH=40 + NUM=2 → toplam 80px, her half-panel 40px
+// HUB75 kutuphanesi: scan_addr_count = HEIGHT / (NUM_PIXELS_PER_SCAN=2) / SCAN_RATE
+// HEIGHT=40, NUM_PANELS=2 → kutuphane 40px yukseklik, tam panel
+// PANEL_WIDTH=40 (tek half-panel), NUM_PANELS=2 → toplam 80px genislik
 // ====================================================================
 #define PANEL_WIDTH  40   // Tek half-panel genisligi
-#define PANEL_HEIGHT 20   // 20/2 = 10 scan line = f10 ile eslesir
-#define NUM_PANELS   2    // Iki half-panel → toplam 80px genislik
+#define PANEL_HEIGHT 40   // Fiziksel yukseklik = 40 satir
+#define NUM_PANELS   2    // Iki half-panel yan yana → toplam 80px genislik
 
 // ====================================================================
 // PIN TANIMLARI - Umutcan ESP32S3 Dev Module
@@ -42,13 +42,13 @@
 #define CLK_PIN 16
 // ====================================================================
 
-// Toplam gorunen genislik
+// Toplam gorunen boyutlar
 #define TOTAL_WIDTH  (PANEL_WIDTH * NUM_PANELS)  // 40*2 = 80
-#define TOTAL_HEIGHT PANEL_HEIGHT               // 20
+#define TOTAL_HEIGHT PANEL_HEIGHT               // 40
 
 MatrixPanel_I2S_DMA *dma_display = nullptr;
 
-// MAP-Y: kimlik - HEIGHT=20 ile scan artik dogru olmali
+// MAP-Y: kimlik - HEIGHT=40 ile tam panel, donusum gerekmiyor
 inline int mapY(int y) { return y; }
 
 void mp(int x, int y, uint8_t r, uint8_t g, uint8_t b) {
@@ -77,7 +77,7 @@ void testKeyRows() {
     };
     const char* names[] = {"0","1","2","5","9","10","15","19"};
 
-    Serial.println("[0-A] ANAHTAR SATIR (HEIGHT=20, mapY YOK)");
+    Serial.println("[0-A] ANAHTAR SATIR (HEIGHT=40, mapY YOK)");
     Serial.println("  Her buffer satiri 2.5sn - kac fiziksel satir yaniyor?");
     for (int i = 0; i < 8; i++) {
         cls();
@@ -134,7 +134,7 @@ void testSolidColors() {
 }
 
 void testHBands() {
-    Serial.println("[2] YATAY RENK BANTLARI (TOTAL 80x20)");
+    Serial.println("[2] YATAY RENK BANTLARI (TOTAL 80x40)");
     Serial.println("  Beklenen: ust yarim=kirmizi / alt yarim=yesil");
     cls();
     for (int y = 0; y < TOTAL_HEIGHT; y++) {
@@ -148,8 +148,8 @@ void testHBands() {
 }
 
 void testFrame() {
-    Serial.println("[3] CERCEVE 80x20 (MAPPED)");
-    Serial.println("  Beklenen: tek dikdortgen cerceve 80x20");
+    Serial.println("[3] CERCEVE 80x40 (MAPPED)");
+    Serial.println("  Beklenen: tek dikdortgen cerceve 80x40");
     cls();
     for (int x = 0; x < TOTAL_WIDTH;  x++) {
         mp(x, 0,               255,255,255);
@@ -168,8 +168,8 @@ void testFrame() {
 }
 
 void testRowScan() {
-    Serial.println("[4] ROW SCAN 80x20 (MAPPED)");
-    Serial.println("  Beklenen: yesil cizgi tek iner, 20 satir");
+    Serial.println("[4] ROW SCAN 80x40 (MAPPED)");
+    Serial.println("  Beklenen: yesil cizgi tek iner, 40 satir");
     cls();
     for (int row = 0; row < TOTAL_HEIGHT; row++) {
         cls();
@@ -181,17 +181,17 @@ void testRowScan() {
 }
 
 void testBigL() {
-    Serial.println("[5] BUYUK L HARFI 80x20 (MAPPED)");
+    Serial.println("[5] BUYUK L HARFI 80x40 (MAPPED)");
     Serial.println("  Beklenen: tek parcali duzgun L, tum panel genisligi");
     cls();
-    // Dikey: x=5..8, y=1..18  (3px kalin)
-    for (int y = 1; y <= 18; y++)
+    // Dikey: x=5..7, y=2..37  (3px kalin)
+    for (int y = 2; y <= 37; y++)
         for (int t = 0; t < 3; t++)
             mp(5+t, y, 255, 255, 255);
-    // Taban: x=5..74, y=16..18  (3px kalin)
+    // Taban: x=5..74, y=35..37  (3px kalin)
     for (int x = 5; x <= 74; x++)
         for (int t = 0; t < 3; t++)
-            mp(x, 16+t, 255, 255, 255);
+            mp(x, 35+t, 255, 255, 255);
     Serial.println("  L cizildi - FOTOGRAF CEKIN!");
     delay(12000);
     cls();
@@ -224,7 +224,7 @@ void setup() {
         LAT_PIN, OE_PIN, CLK_PIN
     };
 
-    // NUM_PANELS=2, WIDTH=40 → toplam gorunen genislik = 40*2 = 80px
+    // NUM_PANELS=2, WIDTH=40, HEIGHT=40 → toplam gorunen = 80x40px
     HUB75_I2S_CFG mxconfig(PANEL_WIDTH, PANEL_HEIGHT, NUM_PANELS, _pins);
     mxconfig.clkphase       = true;
     mxconfig.driver         = HUB75_I2S_CFG::SHIFTREG;
@@ -241,7 +241,7 @@ void setup() {
     dma_display->setBrightness8(180);
     dma_display->clearScreen();
     Serial.printf("  Panel OK - %dx%d x%d panels\n", PANEL_WIDTH, PANEL_HEIGHT, NUM_PANELS);
-    Serial.printf("  Gorunen toplam: %dx%d\n", PANEL_WIDTH * NUM_PANELS, PANEL_HEIGHT);
+    Serial.printf("  Gorunen toplam: %dx%d\n", TOTAL_WIDTH, TOTAL_HEIGHT);
     Serial.println("\nTestler basliyor... (her test arasinda panel yanmali)\n");
     delay(1000);
 }
