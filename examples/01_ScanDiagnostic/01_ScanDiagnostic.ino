@@ -13,12 +13,15 @@
 
 // ====================================================================
 // PANEL BOYUTLARI
-// DENEY: 80x40 panel = iki adet 40x40 half-panel zinciri
-// NUM_PANELS=2, WIDTH=40 → kütüphane iki panel olarak işler
+// f10 = 1/10 scan → 10 scan adresi
+// HEIGHT=40 → kutuphane 20 scan addr bekler, panel 10 tane var → YANLIS
+// HEIGHT=20 → kutuphane 10 scan addr kullanir → DOGRU!
+// Sonuc: fiziksel satir 0-19 gorulur, 20-39 onlarin aynasi olur (1/10 scan)
+// WIDTH=40 + NUM=2 → toplam 80px, her half-panel 40px
 // ====================================================================
-#define PANEL_WIDTH  40   // TEK half-panel genisligi
-#define PANEL_HEIGHT 40
-#define NUM_PANELS   2    // Iki half-panel zincirleme
+#define PANEL_WIDTH  40   // Tek half-panel genisligi
+#define PANEL_HEIGHT 20   // 20/2 = 10 scan line = f10 ile eslesir
+#define NUM_PANELS   2    // Iki half-panel → toplam 80px genislik
 
 // ====================================================================
 // PIN TANIMLARI - Umutcan ESP32S3 Dev Module
@@ -39,27 +42,22 @@
 #define CLK_PIN 16
 // ====================================================================
 
-MatrixPanel_I2S_DMA *dma_display = nullptr;
-
-// ====================================================================
-// MAP-Y: Simdilik kimlik donusumu (y → y)
-// rawRow(0) → 2 fiziksel satir yaniyorsa kütüphane scan'i yanlis anlıyor
-// NUM_PANELS=2 + WIDTH=40 ile bu sorunu düzeltmeyi bekliyoruz
-// ====================================================================
-inline int mapY(int y) {
-    return y;  // Simdilik donusum yok - kütüphane zaten dogru yapsin
-}
+// Toplam gorunen genislik
+#define TOTAL_WIDTH  (PANEL_WIDTH * NUM_PANELS)  // 40*2 = 80
+#define TOTAL_HEIGHT PANEL_HEIGHT               // 20
+: kimlik - HEIGHT=20 ile scan artik dogru olmali
+inline int mapY(int y) { return y; }
 
 void mp(int x, int y, uint8_t r, uint8_t g, uint8_t b) {
-    if (x < 0 || x >= PANEL_WIDTH || y < 0 || y >= PANEL_HEIGHT) return;
+    if (x < 0 || x >= TOTAL_WIDTH || y < 0 || y >= TOTAL_HEIGHT) return;
     dma_display->drawPixelRGB888(x, mapY(y), r, g, b);
 }
 
 void cls() { dma_display->clearScreen(); delay(20); }
 
-// Ham drawPixelRGB888 - mapY OLMADAN direkt buffer satiri
+// Ham drawPixelRGB888 - TOTAL_WIDTH kadar
 void rawRow(int bufRow, uint8_t r, uint8_t g, uint8_t b) {
-    for (int x = 0; x < PANEL_WIDTH; x++)
+    for (int x = 0; x < TOTAL_WIDTH; x++)
         dma_display->drawPixelRGB888(x, bufRow, r, g, b);
 }
 
@@ -69,27 +67,19 @@ void rawRow(int bufRow, uint8_t r, uint8_t g, uint8_t b) {
 // Musteri: her satiri sayarak nerede oldugunu bildirmeli
 // ====================================================================
 void testKeyRows() {
-    // Test edilecek buffer satirlari ve renkleri
-    int testRows[]   = {0,  1,  2,  10, 11, 20, 30};
-    uint8_t cols[7][3] = {
-        {255,0,0},    // 0: Kirmizi
-        {0,255,0},    // 1: Yesil
-        {0,0,255},    // 2: Mavi
-        {255,255,0},  // 10: Sari
-        {255,0,255},  // 11: Mor
-        {0,255,255},  // 20: Cyan
-        {255,128,0},  // 30: Turuncu
+    int testRows[]   = {0, 1, 2, 5, 9, 10, 15, 19};
+    uint8_t cols[8][3] = {
+        {255,0,0}, {0,255,0}, {0,0,255}, {255,255,0},
+        {255,0,255}, {0,255,255}, {255,128,0}, {128,255,128}
     };
-    const char* names[] = {"0=KIRMIZI","1=YESIL","2=MAVI","10=SARI","11=MOR","20=CYAN","30=TURUNCU"};
+    const char* names[] = {"0","1","2","5","9","10","15","19"};
 
-    Serial.println("[0-A] ANAHTAR SATIR TESTI (mapY YOK)");
-    Serial.println("  Her buffer satiri 2 saniye yanacak - SAYARAK hangi fiziksel satirda?");
-    Serial.println("  Panel USTUnden asagiya: 1.satir=0, son=39");
-
-    for (int i = 0; i < 7; i++) {
+    Serial.println("[0-A] ANAHTAR SATIR (HEIGHT=20, mapY YOK)");
+    Serial.println("  Her buffer satiri 2.5sn - kac fiziksel satir yaniyor?");
+    for (int i = 0; i < 8; i++) {
         cls();
         rawRow(testRows[i], cols[i][0], cols[i][1], cols[i][2]);
-        Serial.printf("  >>> Buffer satir %s - HANGI FIZIKSEL SATIRDA? (kac tane yaniyor?)\n", names[i]);
+        Serial.printf("  >>> Buf %s - kac satir yandi?\n", names[i]);
         delay(2500);
     }
     cls();
@@ -141,67 +131,64 @@ void testSolidColors() {
 }
 
 void testHBands() {
-    Serial.println("[2] YATAY RENK BANTLARI (MAPPED)");
-    Serial.println("  Beklenen: ust=kirmizi / 2.ceyrek=yesil / 3.ceyrek=mavi / alt=beyaz");
+    Serial.println("[2] YATAY RENK BANTLARI (TOTAL 80x20)");
+    Serial.println("  Beklenen: ust yarim=kirmizi / alt yarim=yesil");
     cls();
-    for (int y = 0; y < PANEL_HEIGHT; y++) {
+    for (int y = 0; y < TOTAL_HEIGHT; y++) {
         uint8_t r=0, g=0, b=0;
-        if      (y <  10) r = 255;
-        else if (y <  20) g = 255;
-        else if (y <  30) b = 255;
-        else              { r=200; g=200; b=200; }
-        for (int x = 0; x < PANEL_WIDTH; x++) mp(x, y, r, g, b);
+        if (y < TOTAL_HEIGHT/2) r = 255;
+        else                    g = 255;
+        for (int x = 0; x < TOTAL_WIDTH; x++) mp(x, y, r, g, b);
     }
     delay(5000);
     cls();
 }
 
 void testFrame() {
-    Serial.println("[3] CERCEVE (MAPPED)");
-    Serial.println("  Beklenen: 4 koseli tek dikdortgen cerceve");
+    Serial.println("[3] CERCEVE 80x20 (MAPPED)");
+    Serial.println("  Beklenen: tek dikdortgen cerceve 80x20");
     cls();
-    for (int x = 0; x < PANEL_WIDTH;  x++) {
-        mp(x, 0,              255,255,255);
-        mp(x, PANEL_HEIGHT-1, 255,255,255);
+    for (int x = 0; x < TOTAL_WIDTH;  x++) {
+        mp(x, 0,               255,255,255);
+        mp(x, TOTAL_HEIGHT-1,  255,255,255);
     }
-    for (int y = 0; y < PANEL_HEIGHT; y++) {
-        mp(0,             y, 255,255,255);
-        mp(PANEL_WIDTH-1, y, 255,255,255);
+    for (int y = 0; y < TOTAL_HEIGHT; y++) {
+        mp(0,              y, 255,255,255);
+        mp(TOTAL_WIDTH-1,  y, 255,255,255);
     }
-    // KÃ¶ÅŸe renkleri
-    mp(0,             0,              255,  0,  0);  // Sol Ã¼st: kÄ±rmÄ±zÄ±
-    mp(PANEL_WIDTH-1, 0,                0,255,  0);  // SaÄŸ Ã¼st: yeÅŸil
-    mp(0,             PANEL_HEIGHT-1,   0,  0,255);  // Sol alt: mavi
-    mp(PANEL_WIDTH-1, PANEL_HEIGHT-1, 255,255,  0);  // SaÄŸ alt: sarÄ±
+    mp(0,             0,              255,  0,  0);  // Sol ust: kirmizi
+    mp(TOTAL_WIDTH-1, 0,                0,255,  0);  // Sag ust: yesil
+    mp(0,             TOTAL_HEIGHT-1,   0,  0,255);  // Sol alt: mavi
+    mp(TOTAL_WIDTH-1, TOTAL_HEIGHT-1, 255,255,  0);  // Sag alt: sari
     delay(6000);
     cls();
 }
 
 void testRowScan() {
-    Serial.println("[4] ROW SCAN (MAPPED)");
-    Serial.println("  Beklenen: yesil cizgi yukaridan asagiya tek iner");
+    Serial.println("[4] ROW SCAN 80x20 (MAPPED)");
+    Serial.println("  Beklenen: yesil cizgi tek iner, 20 satir");
     cls();
-    for (int row = 0; row < PANEL_HEIGHT; row++) {
+    for (int row = 0; row < TOTAL_HEIGHT; row++) {
         cls();
-        for (int x = 0; x < PANEL_WIDTH; x++) mp(x, row, 0, 255, 0);
+        for (int x = 0; x < TOTAL_WIDTH; x++) mp(x, row, 0, 255, 0);
         Serial.printf("  satir %2d\n", row);
-        delay(150);
+        delay(200);
     }
     cls();
 }
 
 void testBigL() {
-    Serial.println("[5] BUYUK L HARFI (MAPPED)");
-    Serial.println("  Beklenen: tek parcali duzgun L");
+    Serial.println("[5] BUYUK L HARFI 80x20 (MAPPED)");
+    Serial.println("  Beklenen: tek parcali duzgun L, tum panel genisligi");
     cls();
-    // Dikey: x=8..11, y=1..38
-    for (int y = 1; y <= 38; y++)
-        for (int t = 0; t < 4; t++)
-            mp(8+t, y, 255, 255, 255);
-    // Taban: x=8..60, y=35..38
-    for (int x = 8; x <= 60; x++)
-        for (int t = 0; t < 4; t++)
-            mp(x, 35+t, 255, 255, 255);
+    // Dikey: x=5..8, y=1..18  (3px kalin)
+    for (int y = 1; y <= 18; y++)
+        for (int t = 0; t < 3; t++)
+            mp(5+t, y, 255, 255, 255);
+    // Taban: x=5..74, y=16..18  (3px kalin)
+    for (int x = 5; x <= 74; x++)
+        for (int t = 0; t < 3; t++)
+            mp(x, 16+t, 255, 255, 255);
     Serial.println("  L cizildi - FOTOGRAF CEKIN!");
     delay(12000);
     cls();
