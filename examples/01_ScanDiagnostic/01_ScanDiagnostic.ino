@@ -248,16 +248,38 @@ void setup() {
 
     Serial.println("\n\n==============================================");
     Serial.println("  01_ScanDiagnostic - Tek Panel Tanılama");
-    Serial.println("  Panel: P4 80x40 1/10 Scan ICN2037BP");
-    Serial.println("==============================================\n");
+    Serial.println("==============================================");
+    Serial.flush();
 
-    Serial.printf("Toplam konfigürasyon denemesi: %d\n\n", CONFIG_COUNT);
+    // PSRAM kontrolü - DMA buffer için zorunlu
+    Serial.println("\nPSRAM kontrol ediliyor...");
+    Serial.flush();
+    if (psramFound()) {
+        Serial.printf("  PSRAM bulundu: %d bytes serbest\n", heap_caps_get_free_size(MALLOC_CAP_SPIRAM));
+    } else {
+        Serial.println("  PSRAM YOK - Arduino IDE'de PSRAM ayari gerekli!");
+        Serial.println("  Arduino IDE: Tools -> PSRAM -> 'OPI PSRAM' sec");
+        Serial.println("  Daha az bellek gerektiren modu deneniyor...");
+    }
+    Serial.flush();
+
+    // Heap durumu
+    Serial.printf("  Heap serbest: %d bytes\n", heap_caps_get_free_size(MALLOC_CAP_INTERNAL));
+    Serial.printf("  Toplam konfigurasyon: %d\n\n", CONFIG_COUNT);
+    Serial.flush();
+    
+    delay(2000); // Kullanıcının Serial Monitor'u açması için bekle
+    Serial.println("Basliyor...");
+    Serial.flush();
 }
 
 void loop() {
     Serial.printf("\n----------------------------------------------\n");
     Serial.printf("KONFIG %d/%d: %s\n", configIndex + 1, CONFIG_COUNT, configs[configIndex].driverName);
+    Serial.printf("Heap: %d bytes serbest\n", heap_caps_get_free_size(MALLOC_CAP_INTERNAL));
     Serial.printf("----------------------------------------------\n");
+    Serial.flush();
+    delay(200); // flush'in gitmesi için
 
     if (!initPanel(configIndex)) {
         Serial.println("HATA: Panel başlatılamadı! Bir sonraki konfig deneniyor...");
