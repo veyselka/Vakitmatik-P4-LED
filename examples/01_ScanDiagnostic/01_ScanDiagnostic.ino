@@ -65,9 +65,51 @@ void mp(int x, int y, uint8_t r, uint8_t g, uint8_t b) {
 
 void cls() { dma_display->clearScreen(); delay(20); }
 
+// Ham drawPixelRGB888 - mapY OLMADAN direkt buffer satiri
+void rawRow(int bufRow, uint8_t r, uint8_t g, uint8_t b) {
+    for (int x = 0; x < PANEL_WIDTH; x++)
+        dma_display->drawPixelRGB888(x, bufRow, r, g, b);
+}
+
 // ====================================================================
-// TESTLER
+// TEST 0: Ham buffer bantlari - mapY YOK
+// Fiziksel panel hangi buffer satirini nereye yansittiyor?
+// Beklenen (eger panel standart ise): ust=kirmizi / 2.=yesil / 3.=mavi / alt=beyaz
+// Eger karisik cikarsa → panel fold mapping var, formul gerekli
 // ====================================================================
+void testRawBands() {
+    Serial.println("[0-A] RAW BANT TESTI (mapY YOK)");
+    Serial.println("  Buffer satirlari direkt: 0-9=Kirmizi 10-19=Yesil 20-29=Mavi 30-39=Beyaz");
+    Serial.println("  FOTOGRAF CEKIN - ne goruyorsunuz?");
+    cls();
+    for (int y = 0;  y < 10; y++) rawRow(y, 255, 0,   0);
+    for (int y = 10; y < 20; y++) rawRow(y, 0,   255, 0);
+    for (int y = 20; y < 30; y++) rawRow(y, 0,   0,   255);
+    for (int y = 30; y < 40; y++) rawRow(y, 200, 200, 200);
+    delay(8000);
+    cls();
+}
+
+// ====================================================================
+// TEST 0-B: Ham satir tarama - mapY YOK, tek tek buffer satiri
+// Her buffer satirini sirayla yakiyoruz - HANGI FIZIKSEL SATIRLAR YANIYOR?
+// Ilk 10 satiri dikkatli izleyin (0,1,2,3 nasil yaniyor?)
+// ====================================================================
+void testRawRowScan() {
+    Serial.println("[0-B] RAW SATIR TARAMA (mapY YOK)");
+    Serial.println("  Her buffer satiri sirayla yakiliyor - hangi fiziksel satir(lar) yaniyor?");
+    for (int bufRow = 0; bufRow < PANEL_HEIGHT; bufRow++) {
+        cls();
+        rawRow(bufRow, 0, 255, 0);
+        Serial.printf("  Buffer satir %2d yakili - fotograflayin\n", bufRow);
+        delay(400);  // 400ms - fotograflamak icin
+    }
+    cls();
+    Serial.println("  [0-B] BITTI - ozellikle satir 0,1,2,3 icin hangi fiziksel satirlar yandi?");
+}
+
+// ====================================================================
+// MEVCUT TESTLER (mapY ile)
 
 void testSolidColors() {
     Serial.println("[1] SOLID RENKLER");
@@ -194,7 +236,17 @@ void setup() {
 }
 
 void loop() {
-    Serial.println("============ YENÄ° TUR ============");
+    Serial.println("============ YENI TUR ============");
+    Serial.println("Oncelikle RAW testler - mapY olmadan ham buffer goruntusunu aliyoruz\n");
+
+    // --- ONCELIKLI: Ham buffer diagnostigi ---
+    testRawBands();      // 4 renk bant, mapY YOK - ana diagnostic
+    delay(500);
+
+    testRawRowScan();    // Tek tek buffer satiri, mapY YOK
+    delay(500);
+
+    Serial.println("--- RAW testler bitti. Simdi mapped testler: ---\n");
 
     testSolidColors();
     delay(500);
@@ -205,12 +257,9 @@ void loop() {
     testFrame();
     delay(500);
 
-    testRowScan();
-    delay(500);
-
     testBigL();
     delay(500);
 
-    Serial.println("\nTur bitti. 5 saniye sonra yeniden basliyor...\n");
-    delay(5000);
+    Serial.println("\nTur bitti. 10 saniye sonra yeniden basliyor...\n");
+    delay(10000);
 }
