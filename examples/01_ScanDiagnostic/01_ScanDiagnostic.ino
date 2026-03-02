@@ -64,16 +64,12 @@ struct TestConfig {
 };
 
 TestConfig configs[] = {
-    // Deneme 1: ICN2038S, varsayılan ayarlar
-    {false, 4, HUB75_I2S_CFG::HZ_10M, "ICN2038S / clk=false / latch=4", HUB75_I2S_CFG::ICN2038S},
-    // Deneme 2: ICN2038S, clkphase true
-    {true,  4, HUB75_I2S_CFG::HZ_10M, "ICN2038S / clk=true  / latch=4", HUB75_I2S_CFG::ICN2038S},
-    // Deneme 3: SHIFTREG (en temel sürücü), latch=1
-    {false, 1, HUB75_I2S_CFG::HZ_10M, "SHIFTREG / clk=false / latch=1", HUB75_I2S_CFG::SHIFTREG},
-    // Deneme 4: SHIFTREG, clkphase true
+    // Deneme 1: SHIFTREG clk=true - en iyi sonucu veren konfigürasyon
     {true,  1, HUB75_I2S_CFG::HZ_10M, "SHIFTREG / clk=true  / latch=1", HUB75_I2S_CFG::SHIFTREG},
-    // Deneme 5: FM6126A (bazı P4 panellerde kullanılıyor)
-    {false, 4, HUB75_I2S_CFG::HZ_10M, "FM6126A  / clk=false / latch=4", HUB75_I2S_CFG::FM6126A},
+    // Deneme 2: SHIFTREG clk=false
+    {false, 1, HUB75_I2S_CFG::HZ_10M, "SHIFTREG / clk=false / latch=1", HUB75_I2S_CFG::SHIFTREG},
+    // Deneme 3: ICN2038S clk=false
+    {false, 4, HUB75_I2S_CFG::HZ_10M, "ICN2038S / clk=false / latch=4", HUB75_I2S_CFG::ICN2038S},
 };
 const int CONFIG_COUNT = sizeof(configs) / sizeof(configs[0]);
 
@@ -113,11 +109,29 @@ bool initPanel(int cfgIdx) {
     return true;
 }
 
+// ====================================================================
+// 1/10 SCAN FOLDED MATRIX KOORDİNAT DÖNÜŞÜMÜ
+// P4 80x40 panel: logical y → physical y
+// Her scan adresi 4 satırı aynı anda sürer (0,10,20,30 - 1,11,21,31 ...)
+// Formül: physical_y = (logical_y % 4) * 10 + (logical_y / 4)
+// ====================================================================
+#define SCAN_GROUPS  4                           // 40 satir / 10 scan = 4 grup
+#define SCAN_HEIGHT  (PANEL_HEIGHT / SCAN_GROUPS) // 10 satir per grup
+
+inline int mapY(int y) {
+    return (y % SCAN_GROUPS) * SCAN_HEIGHT + (y / SCAN_GROUPS);
+}
+
+void mappedPixel(int x, int y, uint8_t r, uint8_t g, uint8_t b) {
+    if (x < 0 || x >= PANEL_WIDTH || y < 0 || y >= PANEL_HEIGHT) return;
+    dma_display->drawPixelRGB888(x, mapY(y), r, g, b);
+}
+
 // ---- Yardımcı Fonksiyonlar ----
 
 void fillRow(int y, uint8_t r, uint8_t g, uint8_t b) {
     for (int x = 0; x < PANEL_WIDTH; x++) {
-        dma_display->drawPixelRGB888(x, y, r, g, b);
+        mappedPixel(x, y, r, g, b);
     }
 }
 
@@ -158,81 +172,81 @@ void testSolidColors() {
 
 // ---- TEST: Çerçeve + köşe pikselleri ----
 void testFrame() {
-    Serial.println("  [FRAME] Çerçeve ve köşe pikselleri");
+    Serial.println("  [FRAME] Cerceve ve kose pikselleri (MAPPED)");
     clearAll();
 
-    // Çerçeve
     for (int x = 0; x < PANEL_WIDTH; x++) {
-        dma_display->drawPixelRGB888(x, 0, 255, 255, 255);
-        dma_display->drawPixelRGB888(x, PANEL_HEIGHT - 1, 255, 255, 255);
+        mappedPixel(x, 0, 255, 255, 255);
+        mappedPixel(x, PANEL_HEIGHT - 1, 255, 255, 255);
     }
     for (int y = 0; y < PANEL_HEIGHT; y++) {
-        dma_display->drawPixelRGB888(0, y, 255, 255, 255);
-        dma_display->drawPixelRGB888(PANEL_WIDTH - 1, y, 255, 255, 255);
+        mappedPixel(0, y, 255, 255, 255);
+        mappedPixel(PANEL_WIDTH - 1, y, 255, 255, 255);
     }
 
-    // Köşe pikselleri
-    dma_display->drawPixelRGB888(0, 0,                     255, 0,   0);   // Sol üst: Kırmızı
-    dma_display->drawPixelRGB888(PANEL_WIDTH - 1, 0,        0, 255,  0);   // Sağ üst: Yeşil
-    dma_display->drawPixelRGB888(0, PANEL_HEIGHT - 1,       0,  0, 255);   // Sol alt: Mavi
-    dma_display->drawPixelRGB888(PANEL_WIDTH - 1, PANEL_HEIGHT - 1, 255, 255, 0); // Sağ alt: Sarı
+    // Köşe pikselleri (renkli - tanımlama için)
+    mappedPixel(0, 0,                              255, 0,   0);  // Sol üst: Kırmızı
+    mappedPixel(PANEL_WIDTH - 1, 0,                  0, 255,  0);  // Sağ üst: Yeşil
+    mappedPixel(0, PANEL_HEIGHT - 1,                 0,   0, 255);  // Sol alt: Mavi
+    mappedPixel(PANEL_WIDTH - 1, PANEL_HEIGHT - 1, 255, 255,   0);  // Sağ alt: Sarı
 
-    delay(4000);
+    delay(5000);
     clearAll();
 }
 
 // ---- TEST: Dikey çizgiler ----
 void testVerticalLines() {
-    Serial.println("  [VLINES] Her 10 piksel dikey çizgi");
+    Serial.println("  [VLINES] Her 10 piksel dikey cizgi (MAPPED)");
     clearAll();
     for (int x = 0; x < PANEL_WIDTH; x += 10) {
         for (int y = 0; y < PANEL_HEIGHT; y++) {
-            dma_display->drawPixelRGB888(x, y, 255, 128, 0);
+            mappedPixel(x, y, 255, 128, 0);
         }
     }
     delay(4000);
     clearAll();
 }
 
-// ---- TEST: Yatay çizgiler ----
+// ---- TEST: Yatay çizgiler (her 10 satırlık grup farklı renk) ----
 void testHorizontalLines() {
-    Serial.println("  [HLINES] Her 4 piksel yatay çizgi");
+    Serial.println("  [HLINES] Her 10 satirlik grup farkli renk (MAPPED)");
     clearAll();
-    for (int y = 0; y < PANEL_HEIGHT; y += 4) {
+    for (int y = 0; y < PANEL_HEIGHT; y++) {
+        uint8_t r = (y < 10)              ? 255 : 0;
+        uint8_t g = (y >= 10 && y < 20)   ? 255 : 0;
+        uint8_t b = (y >= 20 && y < 30)   ? 255 : 0;
+        uint8_t w = (y >= 30)              ? 200 : 0;
         for (int x = 0; x < PANEL_WIDTH; x++) {
-            // Her grup farklı renk (scan gruplarını görselleştirmek için)
-            int group = (y / 4) % 5;
-            uint8_t r = (group == 0) ? 255 : 0;
-            uint8_t g = (group == 1) ? 255 : 0;
-            uint8_t b = (group == 2) ? 255 : 0;
-            uint8_t w = (group == 3 || group == 4) ? 128 : 0;
-            dma_display->drawPixelRGB888(x, y, r + w, g + w, b + w);
+            mappedPixel(x, y, r + w, g + w, b + w);
         }
     }
-    delay(4000);
+    // Beklenen: üst 1/4 kırmızı, 2/4 yeşil, 3/4 mavi, alt 1/4 beyazımsı
+    delay(5000);
     clearAll();
 }
 
-// ---- TEST: Büyük tek "L" harfi (elle piksel) ----
+// ---- TEST: Büyük tek "L" harfi (MAPPED) ----
 void testBigL() {
-    Serial.println("  [BIG-L] Büyük L harfi (10px geniş, 30px uzun)");
+    Serial.println("  [BIG-L] Buyuk L harfi - MAPPED koordinatlar");
+    Serial.println("  Beklenen: Tek parcali duzgun L gorunmeli!");
     clearAll();
 
-    // Dikey çizgi: (10, 5) → (10, 35)
-    for (int y = 5; y <= 35; y++) {
-        for (int t = 0; t < 4; t++) {  // 4px kalınlık
-            dma_display->drawPixelRGB888(10 + t, y, 255, 255, 255);
+    // Dikey çizgi (sol): x=8..11, y=2..37
+    for (int y = 2; y <= 37; y++) {
+        for (int t = 0; t < 4; t++) {
+            mappedPixel(8 + t, y, 255, 255, 255);
         }
     }
 
-    // Yatay taban: (10, 32) → (40, 35)
-    for (int x = 10; x <= 45; x++) {
-        for (int t = 0; t < 4; t++) {  // 4px kalınlık
-            dma_display->drawPixelRGB888(x, 32 + t, 255, 255, 255);
+    // Yatay taban: x=8..55, y=34..37
+    for (int x = 8; x <= 55; x++) {
+        for (int t = 0; t < 4; t++) {
+            mappedPixel(x, 34 + t, 255, 255, 255);
         }
     }
 
-    delay(5000);
+    Serial.println("  L cizildi. Fotograf cekin!");
+    delay(10000); // 10 saniye bekle
     clearAll();
 }
 
@@ -294,16 +308,19 @@ void loop() {
     // 1. Düz renk testi
     testSolidColors();
 
-    // 2. Çerçeve ve köşeler
-    testFrame();
-
-    // 3. Yatay çizgiler (scan gruplarını görselleştirir)
+    // 2. Yatay gruplar (4 renk bandı - koordinat doğrulaması)
     testHorizontalLines();
 
-    // 4. Row scan (satır sırasını anlamak için)
+    // 3. Çerçeve ve köşeler
+    testFrame();
+
+    // 4. Dikey çizgiler
+    testVerticalLines();
+
+    // 5. Row scan (satır sırası kontrolü)
     testRowScan();
 
-    // 5. Büyük L harfi
+    // 6. Büyük L harfi - ANA TEST
     testBigL();
 
     Serial.printf("\n✓ Konfig %d testi bitti.\n", configIndex + 1);
