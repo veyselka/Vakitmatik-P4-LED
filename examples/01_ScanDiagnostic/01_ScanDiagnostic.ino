@@ -72,40 +72,67 @@ void rawRow(int bufRow, uint8_t r, uint8_t g, uint8_t b) {
 }
 
 // ====================================================================
-// TEST 0: Ham buffer bantlari - mapY YOK
-// Fiziksel panel hangi buffer satirini nereye yansittiyor?
-// Beklenen (eger panel standart ise): ust=kirmizi / 2.=yesil / 3.=mavi / alt=beyaz
-// Eger karisik cikarsa → panel fold mapping var, formul gerekli
+// TEST 0-A: 4 anahtar buffer satiri - YAVASH (2 saniye her biri)
+// Buffer 0, 10, 20, 30 → hangi FIZIKSEL satirlarda cikiyor?
+// Musteri: her satiri sayarak nerede oldugunu bildirmeli
 // ====================================================================
-void testRawBands() {
-    Serial.println("[0-A] RAW BANT TESTI (mapY YOK)");
-    Serial.println("  Buffer satirlari direkt: 0-9=Kirmizi 10-19=Yesil 20-29=Mavi 30-39=Beyaz");
-    Serial.println("  FOTOGRAF CEKIN - ne goruyorsunuz?");
+void testKeyRows() {
+    // Test edilecek buffer satirlari ve renkleri
+    int testRows[]   = {0,  1,  2,  10, 11, 20, 30};
+    uint8_t cols[7][3] = {
+        {255,0,0},    // 0: Kirmizi
+        {0,255,0},    // 1: Yesil
+        {0,0,255},    // 2: Mavi
+        {255,255,0},  // 10: Sari
+        {255,0,255},  // 11: Mor
+        {0,255,255},  // 20: Cyan
+        {255,128,0},  // 30: Turuncu
+    };
+    const char* names[] = {"0=KIRMIZI","1=YESIL","2=MAVI","10=SARI","11=MOR","20=CYAN","30=TURUNCU"};
+
+    Serial.println("[0-A] ANAHTAR SATIR TESTI (mapY YOK)");
+    Serial.println("  Her buffer satiri 2 saniye yanacak - SAYARAK hangi fiziksel satirda?");
+    Serial.println("  Panel USTUnden asagiya: 1.satir=0, son=39");
+
+    for (int i = 0; i < 7; i++) {
+        cls();
+        rawRow(testRows[i], cols[i][0], cols[i][1], cols[i][2]);
+        Serial.printf("  >>> Buffer satir %s - HANGI FIZIKSEL SATIRDA? (kac tane yaniyor?)\n", names[i]);
+        delay(2500);
+    }
     cls();
-    for (int y = 0;  y < 10; y++) rawRow(y, 255, 0,   0);
-    for (int y = 10; y < 20; y++) rawRow(y, 0,   255, 0);
-    for (int y = 20; y < 30; y++) rawRow(y, 0,   0,   255);
-    for (int y = 30; y < 40; y++) rawRow(y, 200, 200, 200);
-    delay(8000);
-    cls();
+    Serial.println("  [0-A] BITTI");
 }
 
 // ====================================================================
-// TEST 0-B: Ham satir tarama - mapY YOK, tek tek buffer satiri
-// Her buffer satirini sirayla yakiyoruz - HANGI FIZIKSEL SATIRLAR YANIYOR?
-// Ilk 10 satiri dikkatli izleyin (0,1,2,3 nasil yaniyor?)
+// TEST 0-B: Satir ciftleri karsilastirma
+// Buffer 0 vs 10 vs 20 vs 30 → ayni fiziksel yere mi gidiyor?
 // ====================================================================
-void testRawRowScan() {
-    Serial.println("[0-B] RAW SATIR TARAMA (mapY YOK)");
-    Serial.println("  Her buffer satiri sirayla yakiliyor - hangi fiziksel satir(lar) yaniyor?");
-    for (int bufRow = 0; bufRow < PANEL_HEIGHT; bufRow++) {
-        cls();
-        rawRow(bufRow, 0, 255, 0);
-        Serial.printf("  Buffer satir %2d yakili - fotograflayin\n", bufRow);
-        delay(400);  // 400ms - fotograflamak icin
-    }
+void testRowPairs() {
+    Serial.println("[0-B] SATIR CIFT KARSILASTIRMA");
+
+    // 0 + 10 ayni anda
     cls();
-    Serial.println("  [0-B] BITTI - ozellikle satir 0,1,2,3 icin hangi fiziksel satirlar yandi?");
+    rawRow(0,  255, 0, 0);   // Kirmizi
+    rawRow(10, 0, 255, 0);   // Yesil
+    Serial.println("  Buf 0=KIRMIZI + Buf 10=YESIL ayni anda - kac renkli band goruyorsunuz?");
+    Serial.println("  2 ayri renk = ayri fiziksel satir | 1 renk = aynı fiziksel satirlar catisiyor");
+    delay(4000);
+
+    cls();
+    rawRow(0,  255, 0, 0);   // Kirmizi
+    rawRow(20, 0, 0, 255);   // Mavi
+    Serial.println("  Buf 0=KIRMIZI + Buf 20=MAVI - kac band?");
+    delay(4000);
+
+    cls();
+    rawRow(0,  255, 0,   0);  // Kirmizi
+    rawRow(10, 0,   255, 0);  // Yesil
+    rawRow(20, 0,   0, 255);  // Mavi
+    rawRow(30, 255, 255, 0);  // Sari
+    Serial.println("  Buf 0+10+20+30 ayni anda - kac renkli band gordunuz? (4 ise = 4 ayri yer)");
+    delay(5000);
+    cls();
 }
 
 // ====================================================================
@@ -237,16 +264,15 @@ void setup() {
 
 void loop() {
     Serial.println("============ YENI TUR ============");
-    Serial.println("Oncelikle RAW testler - mapY olmadan ham buffer goruntusunu aliyoruz\n");
 
-    // --- ONCELIKLI: Ham buffer diagnostigi ---
-    testRawBands();      // 4 renk bant, mapY YOK - ana diagnostic
-    delay(500);
+    // --- TANIMLAMA TESTLERI ---
+    testKeyRows();   // Buffer 0,1,2,10,11,20,30 → tek tek 2.5sn, renk ile
+    delay(1000);
 
-    testRawRowScan();    // Tek tek buffer satiri, mapY YOK
-    delay(500);
+    testRowPairs();  // 0+10+20+30 ayni anda → kac band?
+    delay(1000);
 
-    Serial.println("--- RAW testler bitti. Simdi mapped testler: ---\n");
+    Serial.println("--- Simdi solid + mapped testler: ---\n");
 
     testSolidColors();
     delay(500);
