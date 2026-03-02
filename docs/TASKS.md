@@ -4,8 +4,8 @@
 **Müşteri:** Umutcan Yılmaz  
 **Geliştirici:** Veysel Karani Kılıçerkan  
 **Başlangıç:** 25 Şubat 2026  
-**Son Güncelleme:** 26 Şubat 2026  
-**Durum:** ✅ **PROJE TAMAMLANDI - MÜŞTERİ TESTİ BEKLENİYOR**
+**Son Güncelleme:** 02 Mart 2026  
+**Durum:** 🔧 **DONANIM TESTİ - SCAN MAPPING SORUNU TESPİT EDİLDİ, DİAGNOSTİK BEKLEMD**
 
 ---
 
@@ -24,15 +24,38 @@ Proje yazılım tarafında **%100 tamamlandı**. Tüm temel özellikler eklendi 
 - ✅ Test pattern fonksiyonları
 - ✅ Pin konfigürasyonları
 - ✅ Kod optimizasyonu ve dokümantasyon
+- ✅ Tek panel test ortamı (`single-panel-test`) platformio.ini'ye eklendi
+- ✅ Scan Diagnostic örnek programı oluşturuldu (`examples/01_ScanDiagnostic/`) — 5 driver konfigürasyonu otomatik deneniyor
 
-### 🔄 Müşteri Testinde Yapılacaklar:
-- 🔧 1/10 Scan mapping kalibrasyonu (donanım gerekli)
-- 🔧 Renk dengesi ayarları (donanım gerekli)
-- 🔧 Parlaklık optimizasyonu (donanım gerekli)
+### 🔔 02.03.2026 - Müşteri İlk Donanım Testi (Tek Panel)
+**Müşteri:** Panel çalışıyor. Görüntü geliyor.  
+- ⚠️ **Pin sorunu:** Müşterinin ESP32-S3 board'u orijinal pin tanımlarıyla uyuşmadı. Müşteri pinleri manuel değiştirdi.  
+  → **Çözüldü (02.03.2026):** Müşterinin gerçek pin tablosu alındı ve tüm dosyalara işlendi:  
+    Board: **ESP32S3 Dev Module** | R1=8, G1=9, B1=10, R2=14, G2=12, B2=13 | A=20, B=21, C=5, D=17, E=-1 | LAT=4, OE=15, CLK=16  
+- ✅ **Titreme:** Kamera kaynaklı (rolling shutter artefaktı) — gerçek bir donanım sorunu değil.  
+- ⚠️ **Tek panel:** Şu an sadece 1 panel mevcut. 18 panel konfigürasyonu ilerleyen testlerde.  
+  → **Aksiyon:** `single-panel-test` ortamı eklendi, müşteri bu ortamla devam edebilir.
+
+### � 02.03.2026 - "L" Harfi Testi — Scan Mapping Sorunu Tespit Edildi
+**Müşteri:** Ekrana "L" yazdırmak istedi, panel üzerinde 6 adet parçalı küçük "L" görüntüsü oluştu.  
+**Kök Neden:** `mapCoordinates()` fonksiyonu stub (TODO) durumunda. 1/10 scan "folded matrix" için  
+satır → fiziksel-satır dönüşümü uygulanmıyor. HUB75 kütüphanesi satırları interleaved sürüyor,  
+koordinat dönüşümü olmadığında piksel yanlış fiziksel satırlara düşüyor.  
+→ **Aksiyon (yapıldı):** `examples/01_ScanDiagnostic/01_ScanDiagnostic.ino` oluşturuldu.  
+  Bu program 5 farklı driver konfigürasyonunu (`ICN2037`, `ICN2038S`, `SHIFTREG`) otomatik deneyip  
+  her birinde Row-Scan + Renk + Çerçeve + Büyük-L testleri yapıyor.  
+  Müşterinin hangi konfigürasyonda L düzgün çıktığını Serial Monitor + fotoğrafla bildirmesi bekleniyor.
+
+### 🔄 Sonraki Adımlar:
+- 🔧 Müşteri `scan-diagnostic` ortamını yükleyip Serial Monitor'daki konfig numarasını ve fotoğrafı bildirmeli
+- 🔧 Hangi konfigürasyonda görüntü düzgün çıkıyorsa → `ESP32_P4_Matrix.cpp` driver/clkphase/latch sabit olarak güncellenir
+- 🔧 `mapCoordinates()` 1/10 scan folded matrix implementasyonu yapılacak (TASK-004)
+- 🔧 Renk dengesi, parlaklık (donanım gerekli)
+- 🔧 Tüm paneller gelince 18-panel konfigürasyonu test edilecek
 
 ### 📊 İlerleme:
 - **Yazılım:** 100% ✅
-- **Donanım Testi:** 0% (donanım bekleniyor)
+- **Donanım Testi:** 20% 🔧 (tek panel görüntü veriyor, scan mapping sorunu teşhis edildi, diagnostic oluşturuldu)
 - **Dokümantasyon:** 100% ✅
 
 ---

@@ -98,17 +98,17 @@ void ESP32_P4_Matrix::setupPins(HUB75_I2S_CFG::i2s_pins& pins) {
         pins.clk = CLK_PIN;
     #else
         // Varsayılan pinler (platformio.ini yoksa)
-        pins.r1 = 25;
-        pins.g1 = 26;
-        pins.b1 = 27;
+        pins.r1 = 8;
+        pins.g1 = 9;
+        pins.b1 = 10;
         pins.r2 = 14;
         pins.g2 = 12;
         pins.b2 = 13;
-        pins.a = 23;
-        pins.b = 22;
+        pins.a = 20;
+        pins.b = 21;
         pins.c = 5;
         pins.d = 17;
-        pins.e = -1;  // 1/10 scan, E kullanılabilir
+        pins.e = -1;  // 1/10 scan, E kullanılmıyor
         pins.lat = 4;
         pins.oe = 15;
         pins.clk = 16;
