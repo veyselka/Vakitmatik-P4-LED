@@ -47,7 +47,8 @@
 #define TOTAL_HEIGHT PANEL_HEIGHT               // 20
 
 MatrixPanel_I2S_DMA *dma_display = nullptr;
-: kimlik - HEIGHT=20 ile scan artik dogru olmali
+
+// MAP-Y: kimlik - HEIGHT=20 ile scan artik dogru olmali
 inline int mapY(int y) { return y; }
 
 void mp(int x, int y, uint8_t r, uint8_t g, uint8_t b) {
