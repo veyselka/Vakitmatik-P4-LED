@@ -45,6 +45,8 @@
 // Toplam gorunen genislik
 #define TOTAL_WIDTH  (PANEL_WIDTH * NUM_PANELS)  // 40*2 = 80
 #define TOTAL_HEIGHT PANEL_HEIGHT               // 20
+
+MatrixPanel_I2S_DMA *dma_display = nullptr;
 : kimlik - HEIGHT=20 ile scan artik dogru olmali
 inline int mapY(int y) { return y; }
 
