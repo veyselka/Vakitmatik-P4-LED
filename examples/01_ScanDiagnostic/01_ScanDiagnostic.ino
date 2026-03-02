@@ -12,16 +12,15 @@
 #include <ESP32-HUB75-MatrixPanel-I2S-DMA.h>
 
 // ====================================================================
-// PANEL BOYUTLARI
-// Panel etiket: L920f10s80*40  → fiziksel 80x40
-// f10 = 1/10 scan → 10 scan adresi
-// HUB75 kutuphanesi: scan_addr_count = HEIGHT / (NUM_PIXELS_PER_SCAN=2) / SCAN_RATE
-// HEIGHT=40, NUM_PANELS=2 → kutuphane 40px yukseklik, tam panel
-// PANEL_WIDTH=40 (tek half-panel), NUM_PANELS=2 → toplam 80px genislik
+// PANEL BOYUTLARI - l920f10s80*40 (ICN2037BP, 1/10 Scan)
 // ====================================================================
-#define PANEL_WIDTH  40   // Tek half-panel genisligi
-#define PANEL_HEIGHT 40   // Fiziksel yukseklik = 40 satir
-#define NUM_PANELS   2    // Iki half-panel yan yana → toplam 80px genislik
+// Panel: 2 adet 40x40 modül YAN YANA
+// Her 40x40 modül içinde R1=üst 20 satır, R2=alt 20 satır
+// Kütüphane ayarı: 40x20 base, 2 panel YATAY chain
+// ====================================================================
+#define PANEL_WIDTH  40   // Her modül 40 LED geniş
+#define PANEL_HEIGHT 20   // Her yarı 20 satır
+#define NUM_PANELS   2    // 2 modül YAN YANA
 
 // ====================================================================
 // PIN TANIMLARI - Umutcan ESP32S3 Dev Module
@@ -42,14 +41,17 @@
 #define CLK_PIN 16
 // ====================================================================
 
-// Toplam gorunen boyutlar
+// Toplam gorunen boyutlar  
 #define TOTAL_WIDTH  (PANEL_WIDTH * NUM_PANELS)  // 40*2 = 80
-#define TOTAL_HEIGHT PANEL_HEIGHT               // 40
+#define TOTAL_HEIGHT (PANEL_HEIGHT * 2)           // 20*2 = 40 (R1+R2)
 
 MatrixPanel_I2S_DMA *dma_display = nullptr;
 
-// MAP-Y: kimlik - HEIGHT=40 ile tam panel, donusum gerekmiyor
-inline int mapY(int y) { return y; }
+// MAP-Y: 1/10 Scan için kimlik mapping
+// R1/R2 otomatik üst/alt 20 satırı yönetiyor
+inline int mapY(int y) { 
+    return y;  // Direkt kullan, kütüphane halledecek
+}
 
 void mp(int x, int y, uint8_t r, uint8_t g, uint8_t b) {
     if (x < 0 || x >= TOTAL_WIDTH || y < 0 || y >= TOTAL_HEIGHT) return;
@@ -224,13 +226,19 @@ void setup() {
         LAT_PIN, OE_PIN, CLK_PIN
     };
 
-    // NUM_PANELS=2, WIDTH=40, HEIGHT=40 → toplam gorunen = 80x40px
+    // 2x 40x20 YATAY chain (her modül içi R1/R2 double)
     HUB75_I2S_CFG mxconfig(PANEL_WIDTH, PANEL_HEIGHT, NUM_PANELS, _pins);
-    mxconfig.clkphase       = true;
-    mxconfig.driver         = HUB75_I2S_CFG::SHIFTREG;
-    mxconfig.latch_blanking = 1;
+    
+    // ICN2037BP için optimize edilmiş ayarlar
+    mxconfig.clkphase       = false;  // ICN2037BP için false
+    mxconfig.driver         = HUB75_I2S_CFG::ICN2038S;  // ICN2037BP benzeri
+    mxconfig.latch_blanking = 4;      // ICN2037BP için 4 çevrim
     mxconfig.i2sspeed       = HUB75_I2S_CFG::HZ_10M;
     mxconfig.double_buff    = false;
+    
+    // YATAY chain ayarı (varsayılan zaten X-chain ama belirtelim)
+    mxconfig.mx_width = NUM_PANELS;   // 2 panel yan yana
+    mxconfig.mx_height = 1;            // 1 sıra
 
     dma_display = new MatrixPanel_I2S_DMA(mxconfig);
     if (!dma_display || !dma_display->begin()) {
@@ -240,9 +248,10 @@ void setup() {
 
     dma_display->setBrightness8(180);
     dma_display->clearScreen();
-    Serial.printf("  Panel OK - %dx%d x%d panels\n", PANEL_WIDTH, PANEL_HEIGHT, NUM_PANELS);
-    Serial.printf("  Gorunen toplam: %dx%d\n", TOTAL_WIDTH, TOTAL_HEIGHT);
-    Serial.println("\nTestler basliyor... (her test arasinda panel yanmali)\n");
+    Serial.printf("  Panel: 2x %dx%d YATAY chain\n", PANEL_WIDTH, PANEL_HEIGHT);
+    Serial.printf("  Görünen: %dx%d LED (R1/R2 double)\n", TOTAL_WIDTH, TOTAL_HEIGHT);
+    Serial.printf("  Driver: ICN2037BP | Scan: 1/10\n");
+    Serial.println("\n=== TESTLER BAŞLIYOR ===\n");
     delay(1000);
 }
 
