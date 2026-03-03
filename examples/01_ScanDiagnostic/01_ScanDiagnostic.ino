@@ -1,26 +1,40 @@
 ﻿/**
- * 01_ScanDiagnostic - Tek Panel Scan TanÄ±lama
+ * 01_ScanDiagnostic - P4 Panel Scan Tanılama ve Test
  * 
- * P4 80x40 1/10 Scan ICN2037BP
- * Panel baÅŸlatma sadece setup()'ta yapÄ±lÄ±r â€” DMA restart hatasÄ± Ã¶nlenir.
+ * AMAÇ: 1/10 Scan ICN2037BP P4 panellerin doğru çalışıp çalışmadığını test eder
  * 
- * @author Veysel Karani KÄ±lÄ±Ã§erkan
- * @customer Umutcan YÄ±lmaz
+ * Bu test programı:
+ * - Farklı buffer satırlarını tek tek yakar (hangi fiziksel satıra düştüğünü gösterir)
+ * - Satır çiftlerini karşılaştırır (mapping doğruluğunu kontrol eder)
+ * - Solid renkler, bantlar, çerçeve, satır taraması ve büyük L harfi çizer
+ * - Sonuçları Serial Monitor'dan takip edebilirsiniz
+ * 
+ * DONANIM:
+ * - Panel: P4 80x40 (ICN2037BP, 1/10 Scan)
+ * - 2 adet 40x40 modül YAN YANA (Her modül içinde R1=üst 20, R2=alt 20)
+ * - Toplam görünen: 80x40 LED
+ * 
+ * NOT: Pin tanımları aşağıda doğrudan kod içinde yazılıdır.
+ *      Kendi board'unuza göre değiştirin.
+ * 
+ * @author Veysel Karani Kılıçerkan
+ * @customer Umutcan Yılmaz
+ * @date 3 Mart 2026
  */
 
 #include <Arduino.h>
 #include <ESP32-HUB75-MatrixPanel-I2S-DMA.h>
 
 // ====================================================================
-// PANEL BOYUTLARI - l920f10s80*40 (ICN2037BP, 1/10 Scan)
+// PANEL BOYUTLARI ve KONFİGÜRASYON
 // ====================================================================
-// Panel: 2 adet 40x40 modül YAN YANA
-// Her 40x40 modül içinde R1=üst 20 satır, R2=alt 20 satır
+// Panel: 2 adet 40x40 modül YAN YANA = 80x40 toplam
+// Her 40x40 modül: R1=üst 20 satır, R2=alt 20 satır (1/10 scan)
 // Kütüphane ayarı: 40x20 base, 2 panel YATAY chain
 // ====================================================================
-#define PANEL_WIDTH  40   // Her modül 40 LED geniş
-#define PANEL_HEIGHT 20   // Her yarı 20 satır
-#define NUM_PANELS   2    // 2 modül YAN YANA
+#define PANEL_WIDTH  40   // Her modül 40 LED genişlikte
+#define PANEL_HEIGHT 20   // Her yarı 20 satır (1/10 scan)
+#define NUM_PANELS   2    // 2 modül YAN YANA (horizontal chain)
 
 // ====================================================================
 // PIN TANIMLARI - Umutcan ESP32S3 Dev Module
